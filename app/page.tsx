@@ -4,22 +4,30 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { Eye, EyeOff, Zap, Users, Shield, Radio, ChevronRight } from "lucide-react"
+import { FcGoogle } from "react-icons/fc"
+
+import { loginUser, signInWithGoogle } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 
 export default function LoginPage() {
   const router = useRouter()
+
   const [role, setRole] = useState<"admin" | "participant">("admin")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+<<<<<<< HEAD
   const [error, setError] = useState("")
+=======
+>>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
   const [loading, setLoading] = useState(false)
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
+<<<<<<< HEAD
     setError("")
 
     if (!email || !password) {
@@ -60,6 +68,51 @@ export default function LoginPage() {
       router.push("/admin")
     } else {
       router.push("/student")
+=======
+
+    if (!email || !password) {
+      alert("Please enter email and password")
+      return
+    }
+
+    try {
+      setLoading(true)
+
+      const userData = await loginUser(email, password)
+
+      if (role === "admin" && userData.role === "admin") {
+        router.push("/admin")
+      } else if (role === "participant" && userData.role === "student") {
+        router.push("/student")
+      } else {
+        alert("Role mismatch. Please select the correct role.")
+      }
+    } catch (error) {
+      console.error("Login failed:", error)
+      alert("Login failed. Please check your credentials.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true)
+
+      const selectedRole = role === "admin" ? "admin" : "student"
+      const userData = await signInWithGoogle(selectedRole)
+
+      if (userData.role === "admin") {
+        router.push("/admin")
+      } else {
+        router.push("/student")
+      }
+    } catch (error) {
+      console.error("Google sign-in failed:", error)
+      alert("Google sign-in failed. Please try again.")
+    } finally {
+      setLoading(false)
+>>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
     }
   }
 
@@ -67,18 +120,18 @@ export default function LoginPage() {
     {
       icon: Radio,
       title: "Real-time Coordination",
-      description: "Instant communication across all teams and volunteers"
+      description: "Instant communication across all teams and volunteers",
     },
     {
       icon: Users,
       title: "Team Collaboration",
-      description: "Seamless team management and participant tracking"
+      description: "Seamless team management and participant tracking",
     },
     {
       icon: Shield,
       title: "Secure Access",
-      description: "Role-based permissions with enterprise-grade security"
-    }
+      description: "Role-based permissions with enterprise-grade security",
+    },
   ]
 
   return (
@@ -88,12 +141,19 @@ export default function LoginPage() {
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
           <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-primary/5 rounded-full blur-2xl" />
         </div>
+<<<<<<< HEAD
+=======
+
+>>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
         <div className="absolute inset-0 opacity-5">
-          <div className="h-full w-full" style={{
-            backgroundImage: `linear-gradient(oklch(0.65 0.2 155 / 0.3) 1px, transparent 1px),
+          <div
+            className="h-full w-full"
+            style={{
+              backgroundImage: `linear-gradient(oklch(0.65 0.2 155 / 0.3) 1px, transparent 1px),
                             linear-gradient(90deg, oklch(0.65 0.2 155 / 0.3) 1px, transparent 1px)`,
-            backgroundSize: '50px 50px'
-          }} />
+              backgroundSize: "50px 50px",
+            }}
+          />
         </div>
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
           <div className="flex items-center gap-3 mb-12">
@@ -102,12 +162,20 @@ export default function LoginPage() {
             </div>
             <span className="text-2xl font-bold text-foreground">HackHub</span>
           </div>
+<<<<<<< HEAD
+=======
+
+>>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
           <h1 className="text-4xl xl:text-5xl font-bold text-foreground leading-tight mb-6 text-balance">
             Streamline Your Hackathon Operations
           </h1>
           <p className="text-lg text-muted-foreground mb-12 max-w-md">
             The all-in-one platform for organizing, managing, and running successful hackathons with powerful tools for coordinators and participants.
           </p>
+<<<<<<< HEAD
+=======
+
+>>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
           <div className="space-y-6">
             {features.map((feature, index) => (
               <div key={index} className="flex items-start gap-4 group">
@@ -139,7 +207,11 @@ export default function LoginPage() {
               <p className="text-muted-foreground">Sign in to access your dashboard</p>
             </div>
 
+<<<<<<< HEAD
             <div className="flex p-1 bg-secondary/50 rounded-xl mb-6">
+=======
+            <div className="flex p-1 bg-secondary/50 rounded-xl mb-8">
+>>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
               <button
                 type="button"
                 onClick={() => { setRole("admin"); setError("") }}
@@ -164,12 +236,15 @@ export default function LoginPage() {
               </button>
             </div>
 
+<<<<<<< HEAD
             {error && (
               <p className="text-red-500 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-xl mb-6">
                 {error}
               </p>
             )}
 
+=======
+>>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
             <form onSubmit={handleSignIn} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-foreground">
@@ -228,10 +303,28 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
+<<<<<<< HEAD
                 className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl btn-glow transition-all duration-300 group disabled:opacity-50"
               >
                 {loading ? "Signing in..." : "Sign In"}
                 <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+=======
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl btn-glow transition-all duration-300 group"
+              >
+                {loading ? "Signing in..." : "Sign In"}
+                {!loading && <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="w-full h-12 border-border/50 bg-secondary/30 hover:bg-secondary/50 rounded-xl transition-all duration-300"
+              >
+                <FcGoogle className="mr-3 h-5 w-5" />
+                {loading ? "Please wait..." : "Sign in with Google"}
+>>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
               </Button>
             </form>
 
