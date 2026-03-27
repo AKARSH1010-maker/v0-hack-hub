@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import { Eye, EyeOff, Zap, Users, Shield, Radio, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,9 +15,47 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+
+    if (!email || !password) {
+      setError("Please enter both email and password")
+      return
+    }
+
+    setLoading(true)
+
+    const res = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    })
+
+    setLoading(false)
+
+    if (res?.error) {
+      setError("Invalid email or password")
+      return
+    }
+
+    // Role-credential mismatch check
+    const adminEmails = ["admin@test.com"]
+    const participantEmails = ["user@test.com"]
+
+    if (role === "admin" && !adminEmails.includes(email)) {
+      setError("You don't have admin access. Please use the Volunteer login.")
+      return
+    }
+
+    if (role === "participant" && !participantEmails.includes(email)) {
+      setError("This account is an admin account. Please use the Admin login.")
+      return
+    }
+
     if (role === "admin") {
       router.push("/admin")
     } else {
@@ -44,15 +83,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-background via-card to-background">
-        {/* Decorative elements */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
           <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-primary/5 rounded-full blur-2xl" />
         </div>
-        
-        {/* Grid pattern */}
         <div className="absolute inset-0 opacity-5">
           <div className="h-full w-full" style={{
             backgroundImage: `linear-gradient(oklch(0.65 0.2 155 / 0.3) 1px, transparent 1px),
@@ -60,25 +95,19 @@ export default function LoginPage() {
             backgroundSize: '50px 50px'
           }} />
         </div>
-
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
-          {/* Logo */}
           <div className="flex items-center gap-3 mb-12">
             <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center glow-emerald">
               <Zap className="w-6 h-6 text-primary-foreground" />
             </div>
             <span className="text-2xl font-bold text-foreground">HackHub</span>
           </div>
-
-          {/* Heading */}
           <h1 className="text-4xl xl:text-5xl font-bold text-foreground leading-tight mb-6 text-balance">
             Streamline Your Hackathon Operations
           </h1>
           <p className="text-lg text-muted-foreground mb-12 max-w-md">
             The all-in-one platform for organizing, managing, and running successful hackathons with powerful tools for coordinators and participants.
           </p>
-
-          {/* Features */}
           <div className="space-y-6">
             {features.map((feature, index) => (
               <div key={index} className="flex items-start gap-4 group">
@@ -95,10 +124,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 bg-background">
         <div className="w-full max-w-md">
-          {/* Mobile Logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center glow-emerald">
               <Zap className="w-5 h-5 text-primary-foreground" />
@@ -106,18 +133,16 @@ export default function LoginPage() {
             <span className="text-xl font-bold text-foreground">HackHub</span>
           </div>
 
-          {/* Login Card */}
           <div className="glass-card rounded-2xl p-8 glow-border">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-foreground mb-2">Welcome back</h2>
               <p className="text-muted-foreground">Sign in to access your dashboard</p>
             </div>
 
-            {/* Role Toggle */}
-            <div className="flex p-1 bg-secondary/50 rounded-xl mb-8">
+            <div className="flex p-1 bg-secondary/50 rounded-xl mb-6">
               <button
                 type="button"
-                onClick={() => setRole("admin")}
+                onClick={() => { setRole("admin"); setError("") }}
                 className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all duration-300 ${
                   role === "admin"
                     ? "bg-primary text-primary-foreground shadow-lg glow-emerald"
@@ -128,7 +153,7 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setRole("participant")}
+                onClick={() => { setRole("participant"); setError("") }}
                 className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all duration-300 ${
                   role === "participant"
                     ? "bg-primary text-primary-foreground shadow-lg glow-emerald"
@@ -139,7 +164,12 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Login Form */}
+            {error && (
+              <p className="text-red-500 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-xl mb-6">
+                {error}
+              </p>
+            )}
+
             <form onSubmit={handleSignIn} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-foreground">
@@ -197,9 +227,10 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl btn-glow transition-all duration-300 group"
+                disabled={loading}
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl btn-glow transition-all duration-300 group disabled:opacity-50"
               >
-                Sign In
+                {loading ? "Signing in..." : "Sign In"}
                 <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </form>
@@ -218,7 +249,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Footer */}
           <p className="text-center text-xs text-muted-foreground mt-8">
             By signing in, you agree to our Terms of Service and Privacy Policy
           </p>
