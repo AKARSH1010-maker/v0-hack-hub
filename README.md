@@ -1,35 +1,109 @@
-# v0-hack-hub
+# ⚡ HackHub — Hackathon Management Platform
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+> The all-in-one platform for organizing, managing, and running successful hackathons — built at **Techstasy 2.0**.
 
-## Built with v0
+![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
+![NextAuth](https://img.shields.io/badge/NextAuth.js-JWT-green?style=flat-square)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38bdf8?style=flat-square&logo=tailwind-css)
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+---
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_PviYIaeBFRTN7llUe6LVayseYG7d)
+## 🚀 Features
 
-## Getting Started
+- 🔐 **Role-Based Authentication** — Separate access for Admins and Participants via NextAuth.js
+- 👥 **Team Management** — Seamless team formation and participant tracking
+- 📡 **Real-time Coordination** — Instant communication across all teams and volunteers
+- 🛡️ **Secure Access** — JWT sessions with role-based permissions
+- 🎨 **Modern UI** — Beautiful dark-themed interface built with shadcn/ui + Tailwind CSS
 
-First, run the development server:
+---
 
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| Auth | NextAuth.js (JWT) |
+| Styling | Tailwind CSS + shadcn/ui |
+| Package Manager | npm |
+
+---
+
+## 🏁 Getting Started
+
+### Prerequisites
+- Node.js 18+
+- npm
+
+### Installation
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+# Clone the repository
+git clone https://github.com/ayxsh678/v0-hack-hub.git
+cd v0-hack-hub
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Add your NEXTAUTH_SECRET and NEXTAUTH_URL
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Running the Dev Server
+```bash
+npm run dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Learn More
+---
 
-To learn more, take a look at the following resources:
+## 🔐 Authentication
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+HackHub supports two roles:
 
-<a href="https://v0.app/chat/api/kiro/clone/AKARSH1010-maker/v0-hack-hub" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>
+| Role | Email | Password | Dashboard |
+|------|-------|----------|-----------|
+| Admin / Manager | `admin@test.com` | `1234` | `/admin` |
+| Volunteer / Participant | `user@test.com` | `1234` | `/student` |
+
+> Role mismatch is handled — admins cannot log in via the Participant tab and vice versa.
+
+---
+
+## 📁 Project Structure
+```
+v0-hack-hub/
+├── app/
+│   ├── page.tsx              # Login page
+│   ├── admin/                # Admin dashboard
+│   ├── student/              # Participant dashboard
+│   ├── dashboard/            # General dashboard
+│   └── api/auth/[...nextauth]/ # NextAuth API route
+├── components/               # Reusable UI components (shadcn/ui)
+├── types/                    # TypeScript type declarations
+├── lib/                      # Utility functions
+└── styles/                   # Global styles
+```
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feat/your-feature`
+3. Commit your changes: `git commit -m 'feat: add your feature'`
+4. Push to the branch: `git push origin feat/your-feature`
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+---
+
+<p align="center">Built with ❤️ at <strong>Techstasy 2.0</strong></p>
