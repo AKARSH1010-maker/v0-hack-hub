@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { signIn } from "next-auth/react"
 import { Eye, EyeOff, Zap, Users, Shield, Radio, ChevronRight } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
 
@@ -19,77 +18,32 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
-<<<<<<< HEAD
   const [error, setError] = useState("")
-=======
->>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
   const [loading, setLoading] = useState(false)
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
-<<<<<<< HEAD
     setError("")
 
     if (!email || !password) {
-      setError("Please enter both email and password")
-      return
-    }
-
-    setLoading(true)
-
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    })
-
-    setLoading(false)
-
-    if (res?.error) {
-      setError("Invalid email or password")
-      return
-    }
-
-    // Role-credential mismatch check
-    const adminEmails = ["admin@test.com"]
-    const participantEmails = ["user@test.com"]
-
-    if (role === "admin" && !adminEmails.includes(email)) {
-      setError("You don't have admin access. Please use the Volunteer login.")
-      return
-    }
-
-    if (role === "participant" && !participantEmails.includes(email)) {
-      setError("This account is an admin account. Please use the Admin login.")
-      return
-    }
-
-    if (role === "admin") {
-      router.push("/admin")
-    } else {
-      router.push("/student")
-=======
-
-    if (!email || !password) {
-      alert("Please enter email and password")
+      setError("Please enter email and password")
       return
     }
 
     try {
       setLoading(true)
 
-      const userData = await loginUser(email, password)
+      const selectedRole = role === "admin" ? "admin" : "student"
+      const userData = await loginUser(email, password, selectedRole)
 
-      if (role === "admin" && userData.role === "admin") {
+      if (role === "admin") {
         router.push("/admin")
-      } else if (role === "participant" && userData.role === "student") {
+      } else if (role === "participant") {
         router.push("/student")
-      } else {
-        alert("Role mismatch. Please select the correct role.")
       }
     } catch (error) {
       console.error("Login failed:", error)
-      alert("Login failed. Please check your credentials.")
+      setError("Login failed. Please check your credentials.")
     } finally {
       setLoading(false)
     }
@@ -98,21 +52,21 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       setLoading(true)
+      setError("")
 
       const selectedRole = role === "admin" ? "admin" : "student"
       const userData = await signInWithGoogle(selectedRole)
 
-      if (userData.role === "admin") {
+      if (selectedRole === "admin") {
         router.push("/admin")
       } else {
         router.push("/student")
       }
     } catch (error) {
       console.error("Google sign-in failed:", error)
-      alert("Google sign-in failed. Please try again.")
+      setError("Google sign-in failed. Please try again.")
     } finally {
       setLoading(false)
->>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
     }
   }
 
@@ -141,10 +95,7 @@ export default function LoginPage() {
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
           <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-primary/5 rounded-full blur-2xl" />
         </div>
-<<<<<<< HEAD
-=======
 
->>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
         <div className="absolute inset-0 opacity-5">
           <div
             className="h-full w-full"
@@ -155,6 +106,7 @@ export default function LoginPage() {
             }}
           />
         </div>
+
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
           <div className="flex items-center gap-3 mb-12">
             <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center glow-emerald">
@@ -162,20 +114,14 @@ export default function LoginPage() {
             </div>
             <span className="text-2xl font-bold text-foreground">HackHub</span>
           </div>
-<<<<<<< HEAD
-=======
 
->>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
           <h1 className="text-4xl xl:text-5xl font-bold text-foreground leading-tight mb-6 text-balance">
             Streamline Your Hackathon Operations
           </h1>
           <p className="text-lg text-muted-foreground mb-12 max-w-md">
             The all-in-one platform for organizing, managing, and running successful hackathons with powerful tools for coordinators and participants.
           </p>
-<<<<<<< HEAD
-=======
 
->>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
           <div className="space-y-6">
             {features.map((feature, index) => (
               <div key={index} className="flex items-start gap-4 group">
@@ -207,14 +153,13 @@ export default function LoginPage() {
               <p className="text-muted-foreground">Sign in to access your dashboard</p>
             </div>
 
-<<<<<<< HEAD
-            <div className="flex p-1 bg-secondary/50 rounded-xl mb-6">
-=======
             <div className="flex p-1 bg-secondary/50 rounded-xl mb-8">
->>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
               <button
                 type="button"
-                onClick={() => { setRole("admin"); setError("") }}
+                onClick={() => {
+                  setRole("admin")
+                  setError("")
+                }}
                 className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all duration-300 ${
                   role === "admin"
                     ? "bg-primary text-primary-foreground shadow-lg glow-emerald"
@@ -225,7 +170,10 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => { setRole("participant"); setError("") }}
+                onClick={() => {
+                  setRole("participant")
+                  setError("")
+                }}
                 className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all duration-300 ${
                   role === "participant"
                     ? "bg-primary text-primary-foreground shadow-lg glow-emerald"
@@ -236,15 +184,6 @@ export default function LoginPage() {
               </button>
             </div>
 
-<<<<<<< HEAD
-            {error && (
-              <p className="text-red-500 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-xl mb-6">
-                {error}
-              </p>
-            )}
-
-=======
->>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
             <form onSubmit={handleSignIn} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-foreground">
@@ -300,19 +239,21 @@ export default function LoginPage() {
                 </button>
               </div>
 
+              {error && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                  {error}
+                </div>
+              )}
+
               <Button
                 type="submit"
                 disabled={loading}
-<<<<<<< HEAD
                 className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl btn-glow transition-all duration-300 group disabled:opacity-50"
               >
                 {loading ? "Signing in..." : "Sign In"}
-                <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-=======
-                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl btn-glow transition-all duration-300 group"
-              >
-                {loading ? "Signing in..." : "Sign In"}
-                {!loading && <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />}
+                {!loading && (
+                  <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                )}
               </Button>
 
               <Button
@@ -324,7 +265,6 @@ export default function LoginPage() {
               >
                 <FcGoogle className="mr-3 h-5 w-5" />
                 {loading ? "Please wait..." : "Sign in with Google"}
->>>>>>> c9bfd6c (Add Firebase integration and fix signup/login flow)
               </Button>
             </form>
 

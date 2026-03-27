@@ -1,21 +1,53 @@
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"
+import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth"
 import { auth, db, googleProvider } from "@/lib/firebase"
 import { doc, getDoc, setDoc } from "firebase/firestore"
 
-export async function loginUser(email: string, password: string) {
+export async function loginUser(email: string, password: string, expectedRole?: "admin" | "student") {
   const userCredential = await signInWithEmailAndPassword(auth, email, password)
   const user = userCredential.user
 
   const userDoc = await getDoc(doc(db, "users", user.uid))
 
   if (!userDoc.exists()) {
-    throw new Error("User role not found")
+    throw new Error("User profile not found")
+  }
+
+  const data = userDoc.data()
+
+  if (expectedRole && data.role !== expectedRole) {
+    throw new Error("Role mismatch")
   }
 
   return {
     uid: user.uid,
     email: user.email,
-    ...userDoc.data(),
+    ...data,
+  }
+}
+
+export async function registerUser(
+  email: string,
+  password: string,
+  name: string,
+  role: "admin" | "student"
+) {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+  const user = userCredential.user
+
+  await setDoc(doc(db, "users", user.uid), {
+    uid: user.uid,
+    name,
+    email: user.email || "",
+    role,
+    photoURL: "",
+    createdAt: new Date().toISOString(),
+  })
+
+  return {
+    uid: user.uid,
+    email: user.email,
+    name,
+    role,
   }
 }
 

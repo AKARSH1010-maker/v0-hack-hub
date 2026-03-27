@@ -1,85 +1,56 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Megaphone, Plus, Search, Send, AlertTriangle, Info, Bell, Clock, Edit2, Trash2, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-
-const announcementsData = [
-  {
-    id: 1,
-    title: "WiFi Password Update",
-    message: "The WiFi password has been changed to 'HackHub2024'. Please update your devices.",
-    priority: "urgent",
-    target: "all",
-    createdAt: "5 minutes ago",
-    views: 234
-  },
-  {
-    id: 2,
-    title: "Dinner Service at 7 PM",
-    message: "Dinner will be served in Hall B starting at 7 PM. Vegetarian options available at Station 3.",
-    priority: "info",
-    target: "all",
-    createdAt: "15 minutes ago",
-    views: 189
-  },
-  {
-    id: 3,
-    title: "Project Submission Deadline",
-    message: "Reminder: All project ideas must be submitted by 4 PM today through the HackHub portal.",
-    priority: "urgent",
-    target: "participants",
-    createdAt: "30 minutes ago",
-    views: 312
-  },
-  {
-    id: 4,
-    title: "Server Room 3 Available",
-    message: "Server Room 3 is now open for teams requiring additional computing resources. Please register at the tech desk.",
-    priority: "info",
-    target: "teams",
-    createdAt: "1 hour ago",
-    views: 145
-  },
-  {
-    id: 5,
-    title: "Mentor Sessions Starting",
-    message: "Mentor office hours begin at 3 PM. Check your assigned mentor and room on the dashboard.",
-    priority: "info",
-    target: "participants",
-    createdAt: "2 hours ago",
-    views: 278
-  },
-  {
-    id: 6,
-    title: "Emergency Exit Reminder",
-    message: "Please familiarize yourself with the nearest emergency exits. Safety briefing at 2 PM in Hall A.",
-    priority: "urgent",
-    target: "all",
-    createdAt: "3 hours ago",
-    views: 402
-  }
-]
+import { subscribe, create, remove, COLLECTIONS, formatTimestamp } from "@/lib/firestore"
+import { orderBy, serverTimestamp } from "firebase/firestore"
 
 export default function AnnouncementsPage() {
+  const [announcementsData, setAnnouncementsData] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterPriority, setFilterPriority] = useState<string>("all")
   const [newTitle, setNewTitle] = useState("")
   const [newMessage, setNewMessage] = useState("")
   const [newPriority, setNewPriority] = useState<"urgent" | "info">("info")
+  const [newTarget, setNewTarget] = useState("all")
+
+  useEffect(() => {
+    const unsub = subscribe(COLLECTIONS.ANNOUNCEMENTS, setAnnouncementsData, orderBy("createdAt", "desc"))
+    return () => unsub()
+  }, [])
+
+  const handleCreate = async () => {
+    if (!newTitle.trim() || !newMessage.trim()) return
+    await create(COLLECTIONS.ANNOUNCEMENTS, {
+      title: newTitle,
+      message: newMessage,
+      priority: newPriority,
+      target: newTarget,
+      views: 0,
+      createdAt: serverTimestamp(),
+    })
+    setNewTitle("")
+    setNewMessage("")
+    setNewPriority("info")
+  }
+
+  const handleDelete = async (id: string) => {
+    await remove(COLLECTIONS.ANNOUNCEMENTS, id)
+  }
 
   const filteredAnnouncements = announcementsData.filter(announcement => {
-    const matchesSearch = announcement.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         announcement.message.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = announcement.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         announcement.message?.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesFilter = filterPriority === "all" || announcement.priority === filterPriority
     return matchesSearch && matchesFilter
   })
 
   const urgentCount = announcementsData.filter(a => a.priority === "urgent").length
   const infoCount = announcementsData.filter(a => a.priority === "info").length
-  const totalViews = announcementsData.reduce((acc, a) => acc + a.views, 0)
+  const totalViews = announcementsData.reduce((acc, a) => acc + (a.views || 0), 0)
 
   return (
     <div className="space-y-6">
@@ -201,7 +172,7 @@ export default function AnnouncementsPage() {
                 </Button>
               </div>
             </div>
-            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground btn-glow">
+            <Button onClick={handleCreate} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground btn-glow">
               <Send className="w-4 h-4 mr-2" />
               Broadcast Announcement
             </Button>
@@ -258,7 +229,7 @@ export default function AnnouncementsPage() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(announcement.id)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -268,7 +239,7 @@ export default function AnnouncementsPage() {
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {announcement.createdAt}
+                      {formatTimestamp(announcement.createdAt)}
                     </div>
                     <div className="flex items-center gap-1">
                       <Eye className="w-3 h-3" />

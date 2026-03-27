@@ -25,6 +25,8 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/hooks/use-auth"
+import { subscribeDoc, COLLECTIONS } from "@/lib/firestore"
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
@@ -46,39 +48,57 @@ const bottomItems = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { userData, loading, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const [currentRound, setCurrentRound] = useState(2)
-  const [timeRemaining, setTimeRemaining] = useState({ hours: 4, minutes: 32, seconds: 15 })
+  const [eventSettings, setEventSettings] = useState<any>(null)
+  const [timeRemaining, setTimeRemaining] = useState({ hours: 0, minutes: 0, seconds: 0 })
+
+  useEffect(() => {
+    if (!loading && (!userData || userData.role !== "admin")) {
+      router.push("/")
+    }
+  }, [userData, loading, router])
+
+  useEffect(() => {
+    const unsub = subscribeDoc(COLLECTIONS.EVENT_SETTINGS, "main", (data) => {
+      setEventSettings(data)
+    })
+    return () => unsub()
+  }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
-      setTimeRemaining(prev => {
-        let { hours, minutes, seconds } = prev
-        seconds--
-        if (seconds < 0) {
-          seconds = 59
-          minutes--
+      if (eventSettings?.endDate) {
+        const end = new Date(eventSettings.endDate + "T23:59:59")
+        const diff = end.getTime() - new Date().getTime()
+        if (diff > 0) {
+          const hours = Math.floor(diff / 3600000)
+          const minutes = Math.floor((diff % 3600000) / 60000)
+          const seconds = Math.floor((diff % 60000) / 1000)
+          setTimeRemaining({ hours, minutes, seconds })
         }
-        if (minutes < 0) {
-          minutes = 59
-          hours--
-        }
-        if (hours < 0) {
-          hours = 0
-          minutes = 0
-          seconds = 0
-        }
-        return { hours, minutes, seconds }
-      })
+      }
     }, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [eventSettings])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout()
     router.push("/")
   }
+
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><div className="text-muted-foreground">Loading...</div></div>
+  }
+
+  if (!userData || userData.role !== "admin") {
+    return null
+  }
+
+  const displayName = userData.name || userData.email || "Admin"
+  const initials = displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -202,7 +222,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="h-4 w-px bg-border" />
                 <div className="text-sm">
                   <span className="text-muted-foreground">Round </span>
-                  <span className="font-semibold text-primary">{currentRound}</span>
+                  <span className="font-semibold text-primary">{eventSettings?.currentRound ?? 1}</span>
                 </div>
                 <div className="h-4 w-px bg-border" />
                 <div className="text-sm">
@@ -224,10 +244,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {/* Profile */}
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-primary">AD</span>
+                  {userData.photoURL ? (
+                    <img src={userData.photoURL} alt="" className="w-9 h-9 rounded-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-semibold text-primary">{initials}</span>
+                  )}
                 </div>
                 <div className="hidden lg:block">
-                  <p className="text-sm font-medium text-foreground">Admin User</p>
+                  <p className="text-sm font-medium text-foreground">{displayName}</p>
                   <p className="text-xs text-muted-foreground">Event Manager</p>
                 </div>
               </div>

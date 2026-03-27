@@ -1,49 +1,31 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MessageSquare, Plus, Send, Clock, CheckCircle2, AlertCircle, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-
-const queriesData = [
-  {
-    id: 1,
-    subject: "WiFi connectivity issue in Lab 2",
-    message: "We're experiencing intermittent WiFi disconnections in Lab 2. This is affecting our development work.",
-    category: "Technical",
-    status: "resolved",
-    response: "The issue has been identified and resolved. A network switch was malfunctioning and has been replaced.",
-    createdAt: "2 hours ago",
-    resolvedAt: "1 hour ago"
-  },
-  {
-    id: 2,
-    subject: "Request for additional monitors",
-    message: "Our team would benefit from having 2 additional monitors for parallel development. Is this possible?",
-    category: "Equipment",
-    status: "in-progress",
-    response: "We're checking equipment availability. Will update you shortly.",
-    createdAt: "3 hours ago",
-    resolvedAt: null
-  },
-  {
-    id: 3,
-    subject: "Question about API usage limits",
-    message: "What are the rate limits for the sponsor APIs? We want to ensure we don't exceed them during testing.",
-    category: "General",
-    status: "open",
-    response: null,
-    createdAt: "4 hours ago",
-    resolvedAt: null
-  }
-]
+import { useAuth } from "@/hooks/use-auth"
+import { subscribe, create, COLLECTIONS, formatTimestamp, orderBy, where } from "@/lib/firestore"
 
 export default function QueriesPage() {
+  const { user } = useAuth()
+  const [queriesData, setQueriesData] = useState<any[]>([])
   const [showNewQuery, setShowNewQuery] = useState(false)
   const [newSubject, setNewSubject] = useState("")
   const [newMessage, setNewMessage] = useState("")
   const [newCategory, setNewCategory] = useState("General")
+
+  useEffect(() => {
+    if (!user) return
+    const unsub = subscribe(
+      COLLECTIONS.QUERIES,
+      setQueriesData,
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    )
+    return () => unsub()
+  }, [user])
 
   const openCount = queriesData.filter(q => q.status === "open").length
   const inProgressCount = queriesData.filter(q => q.status === "in-progress").length
@@ -67,9 +49,18 @@ export default function QueriesPage() {
     }
   }
 
-  const handleSubmitQuery = (e: React.FormEvent) => {
+  const handleSubmitQuery = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle query submission
+    if (!newSubject.trim() || !newMessage.trim() || !user) return
+    await create(COLLECTIONS.QUERIES, {
+      subject: newSubject,
+      message: newMessage,
+      category: newCategory,
+      status: "open",
+      response: null,
+      resolvedAt: null,
+      userId: user.uid,
+    })
     setNewSubject("")
     setNewMessage("")
     setShowNewQuery(false)
@@ -216,7 +207,7 @@ export default function QueriesPage() {
                     {query.category}
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground">{query.createdAt}</span>
+                <span className="text-xs text-muted-foreground">{formatTimestamp(query.createdAt)}</span>
               </div>
 
               <div className="space-y-3">
@@ -229,7 +220,7 @@ export default function QueriesPage() {
                     <p className="text-xs text-primary font-medium mb-1">Response from Organizers:</p>
                     <p className="text-sm text-foreground">{query.response}</p>
                     {query.resolvedAt && (
-                      <p className="text-xs text-muted-foreground mt-2">Resolved {query.resolvedAt}</p>
+                      <p className="text-xs text-muted-foreground mt-2">Resolved {formatTimestamp(query.resolvedAt)}</p>
                     )}
                   </div>
                 )}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Users,
   Users2,
@@ -19,79 +19,82 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-const statsCards = [
-  {
-    title: "Total Participants",
-    value: "486",
-    change: "+12%",
-    trend: "up",
-    icon: Users,
-    color: "text-primary",
-    bgColor: "bg-primary/10"
-  },
-  {
-    title: "Active Teams",
-    value: "124",
-    change: "+8%",
-    trend: "up",
-    icon: Users2,
-    color: "text-chart-2",
-    bgColor: "bg-chart-2/10"
-  },
-  {
-    title: "Rooms Occupied",
-    value: "18/24",
-    change: "75%",
-    trend: "neutral",
-    icon: DoorOpen,
-    color: "text-chart-3",
-    bgColor: "bg-chart-3/10"
-  },
-  {
-    title: "Budget Used",
-    value: "$12,450",
-    change: "62%",
-    trend: "neutral",
-    icon: Wallet,
-    color: "text-chart-4",
-    bgColor: "bg-chart-4/10"
-  }
-]
-
-const scheduleEvents = [
-  { time: "10:00 AM", title: "Opening Ceremony", status: "completed" },
-  { time: "11:00 AM", title: "Team Formation", status: "completed" },
-  { time: "12:00 PM", title: "Hacking Begins", status: "active" },
-  { time: "01:00 PM", title: "Lunch Break", status: "upcoming" },
-  { time: "03:00 PM", title: "Mentor Sessions", status: "upcoming" },
-  { time: "06:00 PM", title: "Progress Check-in", status: "upcoming" }
-]
-
-const announcements = [
-  { id: 1, title: "WiFi password has been updated", priority: "info", time: "5 min ago" },
-  { id: 2, title: "Dinner will be served at 7 PM in Hall B", priority: "info", time: "15 min ago" },
-  { id: 3, title: "Server Room 3 is now available", priority: "urgent", time: "30 min ago" },
-  { id: 4, title: "Submit your project ideas by 4 PM", priority: "urgent", time: "1 hour ago" }
-]
-
-const volunteerUpdates = [
-  { name: "Sarah Chen", role: "Floor Manager", status: "active", area: "Building A", round: 2 },
-  { name: "Mike Johnson", role: "Tech Support", status: "active", area: "Server Room", round: 2 },
-  { name: "Emily Davis", role: "Food Coordinator", status: "break", area: "Cafeteria", round: 1 },
-  { name: "Alex Kim", role: "Registration", status: "active", area: "Main Hall", round: 2 }
-]
-
-const leaderboardData = [
-  { rank: 1, team: "Code Wizards", score: 950, members: 4 },
-  { rank: 2, team: "Binary Beasts", score: 890, members: 3 },
-  { rank: 3, team: "Pixel Pioneers", score: 845, members: 4 },
-  { rank: 4, team: "Data Dragons", score: 780, members: 5 },
-  { rank: 5, team: "API Avengers", score: 720, members: 4 }
-]
+import { subscribe, COLLECTIONS, formatTimestamp } from "@/lib/firestore"
+import { orderBy, where } from "firebase/firestore"
 
 export default function AdminDashboard() {
   const [isPTTActive, setIsPTTActive] = useState(false)
+  const [participants, setParticipants] = useState<any[]>([])
+  const [teams, setTeams] = useState<any[]>([])
+  const [rooms, setRooms] = useState<any[]>([])
+  const [budgetCategories, setBudgetCategories] = useState<any[]>([])
+  const [scheduleEvents, setScheduleEvents] = useState<any[]>([])
+  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [volunteers, setVolunteers] = useState<any[]>([])
+
+  useEffect(() => {
+    const unsubs = [
+      subscribe(COLLECTIONS.USERS, setParticipants, where("role", "==", "student")),
+      subscribe(COLLECTIONS.TEAMS, setTeams, orderBy("score", "desc")),
+      subscribe(COLLECTIONS.ROOMS, setRooms),
+      subscribe(COLLECTIONS.BUDGET_CATEGORIES, setBudgetCategories),
+      subscribe(COLLECTIONS.SCHEDULE, setScheduleEvents, orderBy("startTime", "asc")),
+      subscribe(COLLECTIONS.ANNOUNCEMENTS, setAnnouncements, orderBy("createdAt", "desc")),
+      subscribe(COLLECTIONS.VOLUNTEERS, setVolunteers),
+    ]
+    return () => unsubs.forEach((u) => u())
+  }, [])
+
+  const occupiedRooms = rooms.filter((r) => r.status === "occupied").length
+  const totalRooms = rooms.length || 1
+  const totalBudget = budgetCategories.reduce((s, c) => s + (c.allocated || 0), 0)
+  const usedBudget = budgetCategories.reduce((s, c) => s + (c.spent || 0), 0)
+
+  const statsCards = [
+    {
+      title: "Total Participants",
+      value: String(participants.length),
+      change: "",
+      trend: "neutral" as const,
+      icon: Users,
+      color: "text-primary",
+      bgColor: "bg-primary/10",
+    },
+    {
+      title: "Active Teams",
+      value: String(teams.length),
+      change: "",
+      trend: "neutral" as const,
+      icon: Users2,
+      color: "text-chart-2",
+      bgColor: "bg-chart-2/10",
+    },
+    {
+      title: "Rooms Occupied",
+      value: `${occupiedRooms}/${totalRooms}`,
+      change: `${Math.round((occupiedRooms / totalRooms) * 100)}%`,
+      trend: "neutral" as const,
+      icon: DoorOpen,
+      color: "text-chart-3",
+      bgColor: "bg-chart-3/10",
+    },
+    {
+      title: "Budget Used",
+      value: `$${usedBudget.toLocaleString()}`,
+      change: totalBudget ? `${Math.round((usedBudget / totalBudget) * 100)}%` : "0%",
+      trend: "neutral" as const,
+      icon: Wallet,
+      color: "text-chart-4",
+      bgColor: "bg-chart-4/10",
+    },
+  ]
+
+  const leaderboardData = teams.slice(0, 5).map((t, i) => ({
+    rank: i + 1,
+    team: t.name,
+    score: t.score ?? 0,
+    members: t.members?.length ?? 0,
+  }))
 
   return (
     <div className="space-y-6">
@@ -193,30 +196,34 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {scheduleEvents.map((event, index) => (
-                <div
-                  key={index}
-                  className={`flex items-center gap-4 p-3 rounded-xl transition-all duration-200 ${
-                    event.status === "active" 
-                      ? "bg-primary/10 border border-primary/30" 
-                      : "bg-secondary/30 hover:bg-secondary/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 shrink-0">
-                    {event.status === "completed" && <CheckCircle2 className="w-4 h-4 text-primary" />}
-                    {event.status === "active" && <Clock className="w-4 h-4 text-primary animate-pulse" />}
-                    {event.status === "upcoming" && <div className="w-4 h-4 rounded-full border-2 border-muted-foreground" />}
+              {scheduleEvents.slice(0, 6).map((event, index) => {
+                const status = event.status || "upcoming"
+                const time = event.startTime ? new Date(event.startTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : ""
+                return (
+                  <div
+                    key={event.id || index}
+                    className={`flex items-center gap-4 p-3 rounded-xl transition-all duration-200 ${
+                      status === "active" 
+                        ? "bg-primary/10 border border-primary/30" 
+                        : "bg-secondary/30 hover:bg-secondary/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 shrink-0">
+                      {status === "completed" && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                      {status === "active" && <Clock className="w-4 h-4 text-primary animate-pulse" />}
+                      {status === "upcoming" && <div className="w-4 h-4 rounded-full border-2 border-muted-foreground" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${
+                        status === "completed" ? "text-muted-foreground" : "text-foreground"
+                      }`}>
+                        {event.title}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">{time}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${
-                      event.status === "completed" ? "text-muted-foreground" : "text-foreground"
-                    }`}>
-                      {event.title}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0">{event.time}</span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>
@@ -233,7 +240,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {announcements.map((announcement) => (
+              {announcements.slice(0, 4).map((announcement) => (
                 <div
                   key={announcement.id}
                   className="p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-all duration-200"
@@ -244,11 +251,11 @@ export default function AdminDashboard() {
                         ? "bg-destructive/20 text-destructive" 
                         : "bg-primary/20 text-primary"
                     }`}>
-                      {announcement.priority}
+                      {announcement.priority || "info"}
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-foreground">{announcement.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{announcement.time}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{formatTimestamp(announcement.createdAt)}</p>
                     </div>
                   </div>
                 </div>
@@ -272,7 +279,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {volunteerUpdates.map((volunteer, index) => (
+              {volunteers.slice(0, 4).map((volunteer, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-all duration-200"

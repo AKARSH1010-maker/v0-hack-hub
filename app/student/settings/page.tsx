@@ -6,9 +6,49 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useAuth } from "@/hooks/use-auth"
+import { update, COLLECTIONS } from "@/lib/firestore"
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth"
 
 export default function StudentSettingsPage() {
+  const { user, userData } = useAuth()
   const [activeTab, setActiveTab] = useState("notifications")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordError, setPasswordError] = useState("")
+  const [passwordSuccess, setPasswordSuccess] = useState("")
+
+  const handleChangePassword = async () => {
+    setPasswordError("")
+    setPasswordSuccess("")
+    if (!user || !currentPassword || !newPassword) return
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match")
+      return
+    }
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters")
+      return
+    }
+    try {
+      const credential = EmailAuthProvider.credential(user.email!, currentPassword)
+      await reauthenticateWithCredential(user, credential)
+      await updatePassword(user, newPassword)
+      setPasswordSuccess("Password updated successfully")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch {
+      setPasswordError("Current password is incorrect")
+    }
+  }
+
+  const handleSaveNotifications = async () => {
+    // Notification preferences can be stored on user doc
+    if (!user) return
+    await update(COLLECTIONS.USERS, user.uid, { notificationsUpdated: true })
+  }
 
   const tabs = [
     { id: "notifications", label: "Notifications", icon: Bell },
@@ -77,7 +117,7 @@ export default function StudentSettingsPage() {
                   </div>
                 ))}
                 <div className="flex justify-end">
-                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground btn-glow">
+                  <Button onClick={handleSaveNotifications} className="bg-primary hover:bg-primary/90 text-primary-foreground btn-glow">
                     <Save className="w-4 h-4 mr-2" />
                     Save Preferences
                   </Button>
@@ -102,20 +142,22 @@ export default function StudentSettingsPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">Current Password</label>
-                      <Input type="password" className="bg-secondary/50 border-border/50 rounded-xl" />
+                      <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="bg-secondary/50 border-border/50 rounded-xl" />
                     </div>
                     <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">New Password</label>
-                      <Input type="password" className="bg-secondary/50 border-border/50 rounded-xl" />
+                      <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="bg-secondary/50 border-border/50 rounded-xl" />
                     </div>
                     <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">Confirm New Password</label>
-                      <Input type="password" className="bg-secondary/50 border-border/50 rounded-xl" />
+                      <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="bg-secondary/50 border-border/50 rounded-xl" />
                     </div>
+                    {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
+                    {passwordSuccess && <p className="text-sm text-chart-2">{passwordSuccess}</p>}
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground btn-glow">
+                  <Button onClick={handleChangePassword} className="bg-primary hover:bg-primary/90 text-primary-foreground btn-glow">
                     Update Password
                   </Button>
                 </div>

@@ -1,18 +1,27 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { QrCode, Download, Share2, RefreshCw, CheckCircle2, Clock, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-const accessHistory = [
-  { id: 1, location: "Main Entrance", time: "09:00 AM", status: "entry" },
-  { id: 2, location: "Hall A", time: "09:15 AM", status: "entry" },
-  { id: 3, location: "Cafeteria", time: "12:30 PM", status: "entry" },
-  { id: 4, location: "Hall A", time: "01:15 PM", status: "entry" },
-  { id: 5, location: "Lab 1", time: "02:00 PM", status: "entry" }
-]
+import { useAuth } from "@/hooks/use-auth"
+import { subscribe, COLLECTIONS, formatTimestamp, orderBy, where } from "@/lib/firestore"
 
 export default function QRPage() {
+  const { user, userData } = useAuth()
+  const [teams, setTeams] = useState<any[]>([])
+  const [accessHistory, setAccessHistory] = useState<any[]>([])
+
+  useEffect(() => {
+    const unsubs = [
+      subscribe(COLLECTIONS.TEAMS, setTeams),
+    ]
+    return () => unsubs.forEach((u) => u())
+  }, [])
+
+  const myTeam = teams.find((t: any) =>
+    t.members?.some((m: any) => m.uid === user?.uid) || t.leaderId === user?.uid
+  )
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -56,9 +65,9 @@ export default function QRPage() {
 
             {/* User Info */}
             <div className="text-center mb-6">
-              <h3 className="text-xl font-bold text-foreground">John Doe</h3>
-              <p className="text-muted-foreground">Team Code Wizards</p>
-              <p className="text-xs text-primary mt-2">ID: HH-2024-001234</p>
+              <h3 className="text-xl font-bold text-foreground">{userData?.displayName ?? "Student"}</h3>
+              <p className="text-muted-foreground">Team {myTeam?.name ?? "No Team"}</p>
+              <p className="text-xs text-primary mt-2">ID: {user?.uid?.substring(0, 12) ?? "N/A"}</p>
             </div>
 
             {/* Actions */}
