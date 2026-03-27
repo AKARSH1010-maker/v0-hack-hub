@@ -1,21 +1,77 @@
 "use client"
 
-import { useState } from "react"
-import { Settings, User, Bell, Shield, Palette, Globe, Save, Camera } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Settings, User, Bell, Shield, Palette, Globe, Save, Camera, Database } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useAuth } from "@/hooks/use-auth"
+import { update, subscribeDoc, COLLECTIONS } from "@/lib/firestore"
+import { seedFirestore } from "@/lib/seed"
 
 export default function SettingsPage() {
+  const { user, userData } = useAuth()
   const [activeTab, setActiveTab] = useState("profile")
+  const [eventSettings, setEventSettings] = useState<any>(null)
+  const [profileName, setProfileName] = useState("")
+  const [profileEmail, setProfileEmail] = useState("")
+  const [eventName, setEventName] = useState("")
+  const [venue, setVenue] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [seeding, setSeeding] = useState(false)
+
+  useEffect(() => {
+    const unsub = subscribeDoc(COLLECTIONS.EVENT_SETTINGS, "current", (data) => {
+      setEventSettings(data)
+      if (data) {
+        setEventName(data.name || "")
+        setVenue(data.venue || "")
+        setStartDate(data.startDate || "")
+        setEndDate(data.endDate || "")
+      }
+    })
+    return () => unsub()
+  }, [])
+
+  useEffect(() => {
+    if (userData) {
+      setProfileName(userData.name || "")
+      setProfileEmail(userData.email || user?.email || "")
+    }
+  }, [userData, user])
+
+  const handleSaveProfile = async () => {
+    if (user?.uid) {
+      await update(COLLECTIONS.USERS, user.uid, { name: profileName, email: profileEmail })
+    }
+  }
+
+  const handleSaveEvent = async () => {
+    await update(COLLECTIONS.EVENT_SETTINGS, "current", {
+      name: eventName,
+      venue,
+      startDate,
+      endDate,
+    })
+  }
+
+  const handleSeed = async () => {
+    setSeeding(true)
+    try { await seedFirestore() } finally { setSeeding(false) }
+  }
+
+  const displayName = userData?.name || user?.displayName || "Admin"
+  const initials = displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
 
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "security", label: "Security", icon: Shield },
     { id: "appearance", label: "Appearance", icon: Palette },
-    { id: "event", label: "Event Settings", icon: Globe }
+    { id: "event", label: "Event Settings", icon: Globe },
+    { id: "database", label: "Database", icon: Database }
   ]
 
   return (
@@ -66,7 +122,7 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-6">
                   <div className="relative">
                     <div className="w-24 h-24 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                      <span className="text-3xl font-bold text-primary">AD</span>
+                      <span className="text-3xl font-bold text-primary">{initials}</span>
                     </div>
                     <button className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors">
                       <Camera className="w-4 h-4" />
@@ -85,11 +141,11 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">Full Name</label>
-                    <Input defaultValue="Admin User" className="bg-secondary/50 border-border/50 rounded-xl" />
+                    <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} className="bg-secondary/50 border-border/50 rounded-xl" />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">Email</label>
-                    <Input defaultValue="admin@hackhub.com" className="bg-secondary/50 border-border/50 rounded-xl" />
+                    <Input value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} className="bg-secondary/50 border-border/50 rounded-xl" />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">Role</label>
@@ -247,23 +303,23 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">Event Name</label>
-                    <Input defaultValue="HackHub 2024" className="bg-secondary/50 border-border/50 rounded-xl" />
+                    <Input value={eventName} onChange={(e) => setEventName(e.target.value)} className="bg-secondary/50 border-border/50 rounded-xl" />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">Venue</label>
-                    <Input defaultValue="Tech Innovation Center" className="bg-secondary/50 border-border/50 rounded-xl" />
+                    <Input value={venue} onChange={(e) => setVenue(e.target.value)} className="bg-secondary/50 border-border/50 rounded-xl" />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">Start Date</label>
-                    <Input type="date" defaultValue="2024-03-15" className="bg-secondary/50 border-border/50 rounded-xl" />
+                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-secondary/50 border-border/50 rounded-xl" />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">End Date</label>
-                    <Input type="date" defaultValue="2024-03-17" className="bg-secondary/50 border-border/50 rounded-xl" />
+                    <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-secondary/50 border-border/50 rounded-xl" />
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground btn-glow">
+                  <Button onClick={handleSaveEvent} className="bg-primary hover:bg-primary/90 text-primary-foreground btn-glow">
                     <Save className="w-4 h-4 mr-2" />
                     Save Settings
                   </Button>

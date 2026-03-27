@@ -1,29 +1,33 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Trophy, Search, Medal, TrendingUp, TrendingDown, Users, Star, Award } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-
-const leaderboardData = [
-  { rank: 1, team: "Code Wizards", score: 950, members: 4, change: 0, category: "AI/ML", projectName: "SmartAssist" },
-  { rank: 2, team: "Binary Beasts", score: 890, members: 3, change: 1, category: "Web3", projectName: "ChainVote" },
-  { rank: 3, team: "Pixel Pioneers", score: 845, members: 4, change: -1, category: "HealthTech", projectName: "MediTrack" },
-  { rank: 4, team: "Data Dragons", score: 780, members: 5, change: 2, category: "FinTech", projectName: "BudgetBot" },
-  { rank: 5, team: "API Avengers", score: 720, members: 4, change: 0, category: "DevTools", projectName: "APIForge" },
-  { rank: 6, team: "Cloud Chasers", score: 695, members: 3, change: -2, category: "Cloud", projectName: "CloudSync" },
-  { rank: 7, team: "Neural Ninjas", score: 670, members: 4, change: 1, category: "AI/ML", projectName: "NeuralArt" },
-  { rank: 8, team: "Stack Overflow", score: 645, members: 5, change: 3, category: "Education", projectName: "LearnHub" },
-  { rank: 9, team: "Debug Dynasty", score: 620, members: 4, change: -1, category: "DevTools", projectName: "BugHunter" },
-  { rank: 10, team: "Frontend Force", score: 590, members: 3, change: 0, category: "Web", projectName: "UIKit Pro" },
-  { rank: 11, team: "Backend Brigade", score: 565, members: 4, change: 2, category: "Infrastructure", projectName: "ServerScale" },
-  { rank: 12, team: "Mobile Mavericks", score: 540, members: 4, change: -3, category: "Mobile", projectName: "AppFlow" }
-]
+import { subscribe, COLLECTIONS } from "@/lib/firestore"
+import { orderBy } from "firebase/firestore"
 
 export default function LeaderboardPage() {
+  const [teams, setTeams] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterCategory, setFilterCategory] = useState<string>("all")
+
+  useEffect(() => {
+    const unsub = subscribe(COLLECTIONS.TEAMS, setTeams, orderBy("score", "desc"))
+    return () => unsub()
+  }, [])
+
+  const leaderboardData = teams.map((t, i) => ({
+    rank: i + 1,
+    team: t.name,
+    score: t.score ?? 0,
+    members: t.members?.length ?? 0,
+    change: 0,
+    category: t.category || "General",
+    projectName: t.projectName || "",
+    id: t.id,
+  }))
 
   const categories = ["all", ...new Set(leaderboardData.map(t => t.category))]
 

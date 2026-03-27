@@ -1,42 +1,38 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DoorOpen, Users, Plus, Search, MapPin, Clock, Edit2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-
-const roomsData = [
-  { id: 1, name: "Hall A", capacity: 50, occupied: 45, type: "Main Hall", status: "active", team: "Code Wizards" },
-  { id: 2, name: "Hall B", capacity: 50, occupied: 42, type: "Main Hall", status: "active", team: "Binary Beasts" },
-  { id: 3, name: "Room 101", capacity: 10, occupied: 8, type: "Meeting Room", status: "active", team: "Pixel Pioneers" },
-  { id: 4, name: "Room 102", capacity: 10, occupied: 10, type: "Meeting Room", status: "full", team: "Data Dragons" },
-  { id: 5, name: "Room 103", capacity: 10, occupied: 0, type: "Meeting Room", status: "available", team: null },
-  { id: 6, name: "Lab 1", capacity: 20, occupied: 18, type: "Computer Lab", status: "active", team: "API Avengers" },
-  { id: 7, name: "Lab 2", capacity: 20, occupied: 15, type: "Computer Lab", status: "active", team: "Cloud Chasers" },
-  { id: 8, name: "Server Room", capacity: 5, occupied: 3, type: "Technical", status: "restricted", team: null },
-  { id: 9, name: "Cafeteria", capacity: 100, occupied: 25, type: "Common Area", status: "active", team: null },
-  { id: 10, name: "Lounge", capacity: 30, occupied: 12, type: "Rest Area", status: "active", team: null },
-  { id: 11, name: "Room 201", capacity: 8, occupied: 0, type: "Meeting Room", status: "available", team: null },
-  { id: 12, name: "Room 202", capacity: 8, occupied: 6, type: "Meeting Room", status: "active", team: "Neural Ninjas" },
-]
+import { subscribe, remove, COLLECTIONS } from "@/lib/firestore"
 
 export default function RoomsPage() {
+  const [roomsData, setRoomsData] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
 
+  useEffect(() => {
+    const unsub = subscribe(COLLECTIONS.ROOMS, setRoomsData)
+    return () => unsub()
+  }, [])
+
+  const handleDelete = async (id: string) => {
+    await remove(COLLECTIONS.ROOMS, id)
+  }
+
   const filteredRooms = roomsData.filter(room => {
-    const matchesSearch = room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         room.type.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = room.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         room.type?.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesFilter = filterStatus === "all" || room.status === filterStatus
     return matchesSearch && matchesFilter
   })
 
   const totalRooms = roomsData.length
-  const occupiedRooms = roomsData.filter(r => r.status === "active" || r.status === "full").length
+  const occupiedRooms = roomsData.filter(r => r.status === "active" || r.status === "full" || r.status === "occupied").length
   const availableRooms = roomsData.filter(r => r.status === "available").length
-  const totalCapacity = roomsData.reduce((acc, r) => acc + r.capacity, 0)
-  const totalOccupied = roomsData.reduce((acc, r) => acc + r.occupied, 0)
+  const totalCapacity = roomsData.reduce((acc, r) => acc + (r.capacity || 0), 0)
+  const totalOccupied = roomsData.reduce((acc, r) => acc + (r.occupied || 0), 0)
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -189,7 +185,7 @@ export default function RoomsPage() {
                   <Edit2 className="w-4 h-4 mr-2" />
                   Edit
                 </Button>
-                <Button variant="ghost" size="sm" className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10">
+                <Button variant="ghost" size="sm" onClick={() => handleDelete(room.id)} className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10">
                   <Trash2 className="w-4 h-4 mr-2" />
                   Remove
                 </Button>

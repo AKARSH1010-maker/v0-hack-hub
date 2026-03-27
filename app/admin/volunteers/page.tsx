@@ -1,118 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Users, Search, MapPin, Clock, CheckCircle2, Coffee, AlertCircle, Phone, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-
-const volunteersData = [
-  {
-    id: 1,
-    name: "Sarah Chen",
-    role: "Floor Manager",
-    area: "Building A - Floor 1",
-    status: "active",
-    shift: "08:00 AM - 04:00 PM",
-    tasksCompleted: 12,
-    currentRound: 2,
-    phone: "+1 (555) 123-4567",
-    email: "sarah.c@hackhub.com"
-  },
-  {
-    id: 2,
-    name: "Mike Johnson",
-    role: "Tech Support Lead",
-    area: "Server Room & Labs",
-    status: "active",
-    shift: "10:00 AM - 06:00 PM",
-    tasksCompleted: 18,
-    currentRound: 2,
-    phone: "+1 (555) 234-5678",
-    email: "mike.j@hackhub.com"
-  },
-  {
-    id: 3,
-    name: "Emily Davis",
-    role: "Food Coordinator",
-    area: "Cafeteria & Hall B",
-    status: "break",
-    shift: "06:00 AM - 02:00 PM",
-    tasksCompleted: 8,
-    currentRound: 1,
-    phone: "+1 (555) 345-6789",
-    email: "emily.d@hackhub.com"
-  },
-  {
-    id: 4,
-    name: "Alex Kim",
-    role: "Registration Lead",
-    area: "Main Entrance",
-    status: "active",
-    shift: "07:00 AM - 03:00 PM",
-    tasksCompleted: 45,
-    currentRound: 2,
-    phone: "+1 (555) 456-7890",
-    email: "alex.k@hackhub.com"
-  },
-  {
-    id: 5,
-    name: "David Park",
-    role: "Floor Manager",
-    area: "Building A - Floor 2",
-    status: "active",
-    shift: "08:00 AM - 04:00 PM",
-    tasksCompleted: 15,
-    currentRound: 2,
-    phone: "+1 (555) 567-8901",
-    email: "david.p@hackhub.com"
-  },
-  {
-    id: 6,
-    name: "Lisa Wong",
-    role: "Tech Support",
-    area: "Main Hall A",
-    status: "offline",
-    shift: "02:00 PM - 10:00 PM",
-    tasksCompleted: 0,
-    currentRound: 0,
-    phone: "+1 (555) 678-9012",
-    email: "lisa.w@hackhub.com"
-  },
-  {
-    id: 7,
-    name: "James Miller",
-    role: "Security",
-    area: "Perimeter",
-    status: "active",
-    shift: "06:00 AM - 06:00 PM",
-    tasksCompleted: 6,
-    currentRound: 2,
-    phone: "+1 (555) 789-0123",
-    email: "james.m@hackhub.com"
-  },
-  {
-    id: 8,
-    name: "Anna Garcia",
-    role: "Mentor Coordinator",
-    area: "Meeting Rooms",
-    status: "break",
-    shift: "09:00 AM - 05:00 PM",
-    tasksCompleted: 22,
-    currentRound: 1,
-    phone: "+1 (555) 890-1234",
-    email: "anna.g@hackhub.com"
-  }
-]
+import { subscribe, COLLECTIONS } from "@/lib/firestore"
 
 export default function VolunteersPage() {
+  const [volunteersData, setVolunteersData] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
 
+  useEffect(() => {
+    const unsub = subscribe(COLLECTIONS.VOLUNTEERS, setVolunteersData)
+    return () => unsub()
+  }, [])
+
   const filteredVolunteers = volunteersData.filter(volunteer => {
-    const matchesSearch = volunteer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         volunteer.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         volunteer.area.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = volunteer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         volunteer.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         volunteer.area?.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesFilter = filterStatus === "all" || volunteer.status === filterStatus
     return matchesSearch && matchesFilter
   })
@@ -120,7 +28,7 @@ export default function VolunteersPage() {
   const activeCount = volunteersData.filter(v => v.status === "active").length
   const onBreakCount = volunteersData.filter(v => v.status === "break").length
   const offlineCount = volunteersData.filter(v => v.status === "offline").length
-  const totalTasks = volunteersData.reduce((acc, v) => acc + v.tasksCompleted, 0)
+  const totalTasks = volunteersData.reduce((acc, v) => acc + (v.tasksCompleted || 0), 0)
 
   const getStatusColor = (status: string) => {
     switch (status) {

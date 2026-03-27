@@ -1,84 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Bell, Search, AlertTriangle, Info, Clock, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-
-const updatesData = [
-  {
-    id: 1,
-    title: "WiFi Password Update",
-    message: "The WiFi password has been changed to 'HackHub2024'. Please update your devices for uninterrupted connectivity.",
-    priority: "info",
-    category: "Technical",
-    time: "5 minutes ago",
-    read: false
-  },
-  {
-    id: 2,
-    title: "Dinner Service Announcement",
-    message: "Dinner will be served in Hall B starting at 7 PM. Vegetarian options available at Station 3. Don't forget to take a break!",
-    priority: "info",
-    category: "Food",
-    time: "15 minutes ago",
-    read: false
-  },
-  {
-    id: 3,
-    title: "Project Submission Deadline",
-    message: "Reminder: All project ideas must be submitted by 4 PM today through the HackHub portal. Late submissions won't be accepted.",
-    priority: "urgent",
-    category: "Deadline",
-    time: "30 minutes ago",
-    read: false
-  },
-  {
-    id: 4,
-    title: "Mentor Sessions Available",
-    message: "Mentor office hours are now open! Visit Room 201-205 for one-on-one consultations. First come, first served basis.",
-    priority: "urgent",
-    category: "Mentorship",
-    time: "1 hour ago",
-    read: true
-  },
-  {
-    id: 5,
-    title: "Server Room 3 Now Available",
-    message: "For teams needing additional computing resources, Server Room 3 is now open. Please register at the tech desk first.",
-    priority: "info",
-    category: "Technical",
-    time: "2 hours ago",
-    read: true
-  },
-  {
-    id: 6,
-    title: "Coffee Station Restocked",
-    message: "The coffee station in Hall A has been restocked with fresh supplies. Energy drinks also available!",
-    priority: "info",
-    category: "Food",
-    time: "3 hours ago",
-    read: true
-  },
-  {
-    id: 7,
-    title: "Round 2 Results Announced",
-    message: "Round 2 evaluation is complete. Check your dashboard for updated scores. Top 20 teams advancing to final round!",
-    priority: "urgent",
-    category: "Competition",
-    time: "4 hours ago",
-    read: true
-  }
-]
+import { subscribe, COLLECTIONS, formatTimestamp, orderBy } from "@/lib/firestore"
 
 export default function UpdatesPage() {
+  const [updatesData, setUpdatesData] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterPriority, setFilterPriority] = useState<string>("all")
 
+  useEffect(() => {
+    const unsub = subscribe(COLLECTIONS.ANNOUNCEMENTS, setUpdatesData, orderBy("createdAt", "desc"))
+    return () => unsub()
+  }, [])
+
   const filteredUpdates = updatesData.filter(update => {
-    const matchesSearch = update.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         update.message.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = (update.title ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (update.message ?? "").toLowerCase().includes(searchQuery.toLowerCase())
     const matchesFilter = filterPriority === "all" || update.priority === filterPriority
     return matchesSearch && matchesFilter
   })
@@ -179,13 +120,13 @@ export default function UpdatesPage() {
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded-lg shrink-0">
-                      {update.category}
+                      {update.category ?? "General"}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-3">{update.message}</p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Clock className="w-3 h-3" />
-                    {update.time}
+                    {formatTimestamp(update.createdAt)}
                   </div>
                 </div>
               </div>

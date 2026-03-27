@@ -33,14 +33,13 @@ export default function LoginPage() {
     try {
       setLoading(true)
 
-      const userData = await loginUser(email, password)
+      const selectedRole = role === "admin" ? "admin" : "student"
+      const userData = await loginUser(email, password, selectedRole)
 
-      if (role === "admin" && userData.role === "admin") {
+      if (role === "admin") {
         router.push("/admin")
-      } else if (role === "participant" && userData.role === "student") {
+      } else if (role === "participant") {
         router.push("/student")
-      } else {
-        setError("Role mismatch. Please select the correct role.")
       }
     } catch (error) {
       console.error("Login failed:", error)
@@ -58,7 +57,7 @@ export default function LoginPage() {
       const selectedRole = role === "admin" ? "admin" : "student"
       const userData = await signInWithGoogle(selectedRole)
 
-      if (userData.role === "admin") {
+      if (selectedRole === "admin") {
         router.push("/admin")
       } else {
         router.push("/student")

@@ -1,19 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Users, Plus, LogIn, X, Check, Crown, Code, Palette, Database, Cpu } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/hooks/use-auth"
+import { subscribe, create, update, COLLECTIONS, orderBy, where } from "@/lib/firestore"
 
 const skillOptions = ["Frontend", "Backend", "ML/AI", "Design", "DevOps", "Mobile"]
-
-const availableTeams = [
-  { id: 1, name: "Binary Beasts", members: 3, maxMembers: 5, skills: ["Frontend", "Backend", "ML/AI"], open: true },
-  { id: 2, name: "Pixel Pioneers", members: 4, maxMembers: 5, skills: ["Design", "Frontend", "Mobile"], open: true },
-  { id: 3, name: "Data Dragons", members: 5, maxMembers: 5, skills: ["ML/AI", "Backend", "DevOps"], open: false },
-  { id: 4, name: "API Avengers", members: 2, maxMembers: 4, skills: ["Backend", "DevOps"], open: true },
-]
 
 const skillIcons: Record<string, any> = {
   Frontend: Code,
@@ -25,13 +20,23 @@ const skillIcons: Record<string, any> = {
 }
 
 export default function TeamPage() {
-  const [hasTeam, setHasTeam] = useState(false)
+  const { user, userData } = useAuth()
+  const [teams, setTeams] = useState<any[]>([])
   const [view, setView] = useState<"home" | "create" | "join">("home")
   const [teamName, setTeamName] = useState("")
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [joinCode, setJoinCode] = useState("")
   const [joinError, setJoinError] = useState("")
-  const [myTeam, setMyTeam] = useState<any>(null)
+
+  useEffect(() => {
+    const unsub = subscribe(COLLECTIONS.TEAMS, setTeams)
+    return () => unsub()
+  }, [])
+
+  const myTeam = teams.find((t: any) =>
+    t.members?.some((m: any) => m.uid === user?.uid) || t.leaderId === user?.uid
+  )
+  const availableTeams = teams.filter((t: any) => !t.members || t.members.length < (t.maxMembers ?? 5))
 
   const toggleSkill = (skill: string) => {
     setSelectedSkills((prev) =>
@@ -39,52 +44,56 @@ export default function TeamPage() {
     )
   }
 
-  const handleCreateTeam = () => {
-    if (!teamName.trim()) return
-    setMyTeam({
+  const handleCreateTeam = async () => {
+    if (!teamName.trim() || !user) return
+    const code = "HACK" + Math.random().toString(36).substring(2, 6).toUpperCase()
+    await create(COLLECTIONS.TEAMS, {
       name: teamName,
-      code: "HACK" + Math.random().toString(36).substring(2, 6).toUpperCase(),
-      members: [{ name: "You", role: "Leader", skills: selectedSkills }],
+      code,
+      leaderId: user.uid,
+      members: [{ uid: user.uid, name: userData?.displayName ?? "You", role: "Leader", skills: selectedSkills }],
       maxMembers: 5,
       skills: selectedSkills,
+      score: 0,
+      roundsCleared: 0,
     })
-    setHasTeam(true)
+    setTeamName("")
+    setSelectedSkills([])
+    setView("home")
   }
 
-  const handleJoinTeam = (team?: any) => {
-    if (team) {
-      setMyTeam({
-        name: team.name,
-        code: "HACK" + Math.random().toString(36).substring(2, 6).toUpperCase(),
-        members: [
-          { name: "You", role: "Member", skills: [] },
-          ...Array(team.members).fill(null).map((_, i) => ({
-            name: `Member ${i + 1}`, role: "Member", skills: []
-          }))
-        ],
-        maxMembers: team.maxMembers,
-        skills: team.skills,
-      })
-      setHasTeam(true)
+  const handleJoinByCode = async () => {
+    if (!joinCode.trim() || !user) return
+    const team = teams.find((t: any) => t.code?.toUpperCase() === joinCode.toUpperCase())
+    if (!team) {
+      setJoinError("Invalid team code")
       return
     }
-    if (joinCode.trim().length < 4) {
-      setJoinError("Please enter a valid team code")
+    if ((team.members?.length ?? 0) >= (team.maxMembers ?? 5)) {
+      setJoinError("Team is full")
       return
     }
     setJoinError("")
-    setMyTeam({
-      name: "Joined Team",
-      code: joinCode.toUpperCase(),
-      members: [{ name: "You", role: "Member", skills: [] }],
-      maxMembers: 5,
-      skills: [],
-    })
-    setHasTeam(true)
+    const members = [...(team.members ?? []), { uid: user.uid, name: userData?.displayName ?? "You", role: "Member", skills: [] }]
+    await update(COLLECTIONS.TEAMS, team.id, { members })
+    setJoinCode("")
+    setView("home")
+  }
+
+  const handleJoinTeam = async (team: any) => {
+    if (!user) return
+    const members = [...(team.members ?? []), { uid: user.uid, name: userData?.displayName ?? "You", role: "Member", skills: [] }]
+    await update(COLLECTIONS.TEAMS, team.id, { members })
+  }
+
+  const handleLeaveTeam = async () => {
+    if (!myTeam || !user) return
+    const members = (myTeam.members ?? []).filter((m: any) => m.uid !== user.uid)
+    await update(COLLECTIONS.TEAMS, myTeam.id, { members })
   }
 
   // Already in a team
-  if (hasTeam && myTeam) {
+  if (myTeam) {
     return (
       <div className="space-y-6">
         <div>
@@ -102,7 +111,7 @@ export default function TeamPage() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-foreground">{myTeam.name}</h2>
-                  <p className="text-muted-foreground">{myTeam.members.length}/{myTeam.maxMembers} members</p>
+                  <p className="text-muted-foreground">{myTeam.members?.length ?? 0}/{myTeam.maxMembers ?? 5} members</p>
                 </div>
               </div>
               <div className="flex flex-col items-start lg:items-end gap-2">
@@ -149,7 +158,7 @@ export default function TeamPage() {
             <CardTitle className="text-lg flex items-center justify-between">
               Members
               <span className="text-sm font-normal text-muted-foreground">
-                {myTeam.members.length}/{myTeam.maxMembers} slots filled
+                {myTeam.members?.length ?? 0}/{myTeam.maxMembers ?? 5} slots filled
               </span>
             </CardTitle>
           </CardHeader>
@@ -159,11 +168,11 @@ export default function TeamPage() {
                 <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-all">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
-                      <span className="text-sm font-bold text-primary">{member.name[0]}</span>
+                      <span className="text-sm font-bold text-primary">{(member.name ?? "?")[0]}</span>
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">{member.name}</p>
-                      <p className="text-xs text-muted-foreground">{member.role}</p>
+                      <p className="font-medium text-foreground">{member.name ?? "Unknown"}</p>
+                      <p className="text-xs text-muted-foreground">{member.role ?? "Member"}</p>
                     </div>
                   </div>
                   {member.role === "Leader" && (
@@ -173,7 +182,7 @@ export default function TeamPage() {
               ))}
 
               {/* Empty slots */}
-              {Array(myTeam.maxMembers - myTeam.members.length).fill(null).map((_, i) => (
+              {Array((myTeam.maxMembers ?? 5) - (myTeam.members?.length ?? 0)).fill(null).map((_, i) => (
                 <div key={i} className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-border/50">
                   <div className="w-10 h-10 rounded-full border-2 border-dashed border-border/50 flex items-center justify-center">
                     <Plus className="w-4 h-4 text-muted-foreground" />
@@ -188,7 +197,7 @@ export default function TeamPage() {
         <Button
           variant="outline"
           className="border-destructive/30 text-destructive hover:bg-destructive/10"
-          onClick={() => { setHasTeam(false); setMyTeam(null); setView("home") }}
+          onClick={handleLeaveTeam}
         >
           Leave Team
         </Button>
@@ -279,7 +288,7 @@ export default function TeamPage() {
                 className="h-12 bg-secondary/50 border-border/50 rounded-xl font-mono uppercase"
               />
               <Button
-                onClick={() => handleJoinTeam()}
+                onClick={handleJoinByCode}
                 className="h-12 px-6 bg-primary text-primary-foreground rounded-xl font-semibold shrink-0"
               >
                 Join
@@ -303,9 +312,9 @@ export default function TeamPage() {
                       </div>
                       <div>
                         <h4 className="font-semibold text-foreground">{team.name}</h4>
-                        <p className="text-sm text-muted-foreground">{team.members}/{team.maxMembers} members</p>
+                        <p className="text-sm text-muted-foreground">{team.members?.length ?? 0}/{team.maxMembers ?? 5} members</p>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {team.skills.map((skill) => (
+                          {(team.skills ?? []).map((skill: string) => (
                             <span key={skill} className="text-xs px-2 py-0.5 bg-secondary/50 rounded-md text-muted-foreground">
                               {skill}
                             </span>
@@ -315,11 +324,10 @@ export default function TeamPage() {
                     </div>
                     <Button
                       onClick={() => handleJoinTeam(team)}
-                      disabled={!team.open}
                       size="sm"
-                      className="bg-primary text-primary-foreground rounded-lg disabled:opacity-40"
+                      className="bg-primary text-primary-foreground rounded-lg"
                     >
-                      {team.open ? "Join" : "Full"}
+                      Join
                     </Button>
                   </div>
                 </CardContent>

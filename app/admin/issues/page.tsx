@@ -1,88 +1,35 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AlertCircle, Plus, Search, CheckCircle2, Clock, AlertTriangle, XCircle, MessageSquare, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-
-const issuesData = [
-  {
-    id: 1,
-    title: "Power outlet not working in Room 103",
-    description: "Multiple participants reported that the power outlets near the window are not functioning.",
-    reporter: "Sarah Chen",
-    priority: "high",
-    status: "open",
-    category: "Infrastructure",
-    createdAt: "10 minutes ago",
-    assignee: "Tech Team"
-  },
-  {
-    id: 2,
-    title: "WiFi connectivity issues in Hall B",
-    description: "Intermittent WiFi disconnections affecting teams in the back section of Hall B.",
-    reporter: "Mike Johnson",
-    priority: "critical",
-    status: "in-progress",
-    category: "Network",
-    createdAt: "25 minutes ago",
-    assignee: "Network Admin"
-  },
-  {
-    id: 3,
-    title: "Projector not displaying in Room 201",
-    description: "The projector shows no signal when connecting laptops via HDMI.",
-    reporter: "Emily Davis",
-    priority: "medium",
-    status: "open",
-    category: "Equipment",
-    createdAt: "45 minutes ago",
-    assignee: "Unassigned"
-  },
-  {
-    id: 4,
-    title: "Air conditioning too cold in Lab 1",
-    description: "Participants are complaining about the temperature being too low in Computer Lab 1.",
-    reporter: "Alex Kim",
-    priority: "low",
-    status: "resolved",
-    category: "Facilities",
-    createdAt: "1 hour ago",
-    assignee: "Facilities"
-  },
-  {
-    id: 5,
-    title: "Missing chairs in Room 102",
-    description: "Team needs 3 additional chairs for their workspace.",
-    reporter: "David Park",
-    priority: "low",
-    status: "resolved",
-    category: "Furniture",
-    createdAt: "2 hours ago",
-    assignee: "Facilities"
-  },
-  {
-    id: 6,
-    title: "Printer jam in Resource Center",
-    description: "The main printer is showing a paper jam error and needs maintenance.",
-    reporter: "Lisa Wong",
-    priority: "medium",
-    status: "in-progress",
-    category: "Equipment",
-    createdAt: "2 hours ago",
-    assignee: "Tech Team"
-  }
-]
+import { subscribe, create, update, COLLECTIONS, formatTimestamp } from "@/lib/firestore"
+import { orderBy, serverTimestamp } from "firebase/firestore"
 
 export default function IssuesPage() {
+  const [issuesData, setIssuesData] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [filterPriority, setFilterPriority] = useState<string>("all")
 
+  useEffect(() => {
+    const unsub = subscribe(COLLECTIONS.ISSUES, setIssuesData, orderBy("createdAt", "desc"))
+    return () => unsub()
+  }, [])
+
+  const handleResolve = async (id: string) => {
+    await update(COLLECTIONS.ISSUES, id, { status: "resolved" })
+  }
+
+  const handleAssign = async (id: string) => {
+    await update(COLLECTIONS.ISSUES, id, { status: "in-progress" })
+  }
+
   const filteredIssues = issuesData.filter(issue => {
-    const matchesSearch = issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         issue.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = issue.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         issue.description?.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = filterStatus === "all" || issue.status === filterStatus
     const matchesPriority = filterPriority === "all" || issue.priority === filterPriority
     return matchesSearch && matchesStatus && matchesPriority
@@ -249,7 +196,7 @@ export default function IssuesPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {issue.createdAt}
+                      {formatTimestamp(issue.createdAt)}
                     </div>
                     <div className="flex items-center gap-1">
                       <MessageSquare className="w-3 h-3" />
@@ -262,7 +209,7 @@ export default function IssuesPage() {
                     View Details
                   </Button>
                   {issue.status !== "resolved" && (
-                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <Button size="sm" onClick={() => issue.status === "open" ? handleAssign(issue.id) : handleResolve(issue.id)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                       {issue.status === "open" ? "Assign" : "Resolve"}
                     </Button>
                   )}

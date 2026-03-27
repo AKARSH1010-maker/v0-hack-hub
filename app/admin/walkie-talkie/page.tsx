@@ -1,32 +1,35 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Radio, Mic, MicOff, Volume2, VolumeX, Users, Signal, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-const channels = [
-  { id: 1, name: "All Volunteers", members: 24, active: true },
-  { id: 2, name: "Floor Managers", members: 6, active: true },
-  { id: 3, name: "Tech Support", members: 8, active: true },
-  { id: 4, name: "Food & Logistics", members: 5, active: false },
-  { id: 5, name: "Registration", members: 4, active: true },
-  { id: 6, name: "Security", members: 3, active: false }
-]
-
-const recentTransmissions = [
-  { id: 1, sender: "Sarah Chen", channel: "All Volunteers", message: "Coffee station is running low on supplies", time: "2 min ago" },
-  { id: 2, sender: "Mike Johnson", channel: "Tech Support", message: "Resolved the WiFi issue in Hall B", time: "5 min ago" },
-  { id: 3, sender: "Admin", channel: "All Volunteers", message: "Lunch break starting in 15 minutes", time: "12 min ago" },
-  { id: 4, sender: "Emily Davis", channel: "Floor Managers", message: "Need extra chairs in Room 102", time: "18 min ago" },
-  { id: 5, sender: "Alex Kim", channel: "Registration", message: "Late registration team arriving", time: "25 min ago" }
-]
+import { subscribe, create, COLLECTIONS, formatTimestamp } from "@/lib/firestore"
+import { orderBy, serverTimestamp } from "firebase/firestore"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function WalkieTalkiePage() {
+  const { userData } = useAuth()
+  const [channels, setChannels] = useState<any[]>([])
+  const [recentTransmissions, setRecentTransmissions] = useState<any[]>([])
   const [isPTTActive, setIsPTTActive] = useState(false)
-  const [selectedChannel, setSelectedChannel] = useState(channels[0])
+  const [selectedChannel, setSelectedChannel] = useState<any>(null)
   const [isMuted, setIsMuted] = useState(false)
   const [showChannelDropdown, setShowChannelDropdown] = useState(false)
+
+  useEffect(() => {
+    const unsubs = [
+      subscribe(COLLECTIONS.WALKIE_CHANNELS, setChannels),
+      subscribe(COLLECTIONS.WALKIE_TRANSMISSIONS, setRecentTransmissions, orderBy("createdAt", "desc")),
+    ]
+    return () => unsubs.forEach(u => u())
+  }, [])
+
+  useEffect(() => {
+    if (!selectedChannel && channels.length > 0) {
+      setSelectedChannel(channels[0])
+    }
+  }, [channels, selectedChannel])
 
   return (
     <div className="space-y-6">
@@ -50,7 +53,7 @@ export default function WalkieTalkiePage() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
-                      <span className="font-medium text-foreground">{selectedChannel.name}</span>
+                      <span className="font-medium text-foreground">{selectedChannel?.name || "Select Channel"}</span>
                     </div>
                     <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${showChannelDropdown ? "rotate-180" : ""}`} />
                   </button>
@@ -108,7 +111,7 @@ export default function WalkieTalkiePage() {
 
                 {/* Status */}
                 <p className={`text-lg font-medium mb-6 ${isPTTActive ? "text-primary" : "text-muted-foreground"}`}>
-                  {isPTTActive ? "Broadcasting to " + selectedChannel.name + "..." : "Hold to Talk"}
+                  {isPTTActive ? "Broadcasting to " + (selectedChannel?.name || "channel") + "..." : "Hold to Talk"}
                 </p>
 
                 {/* Controls */}
@@ -189,9 +192,9 @@ export default function WalkieTalkiePage() {
                   >
                     <div className="flex items-start justify-between mb-1">
                       <span className="text-sm font-medium text-foreground">{transmission.sender}</span>
-                      <span className="text-xs text-muted-foreground">{transmission.time}</span>
+                      <span className="text-xs text-muted-foreground">{formatTimestamp(transmission.createdAt)}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-1">{transmission.channel}</p>
+                    <p className="text-xs text-muted-foreground mb-1">{transmission.channel || ""}</p>
                     <p className="text-sm text-foreground/80">{transmission.message}</p>
                   </div>
                 ))}

@@ -1,26 +1,32 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Trophy, Search, Medal, TrendingUp, TrendingDown, Users, Award, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-
-const leaderboardData = [
-  { rank: 1, team: "Code Wizards", score: 950, members: 4, change: 0, category: "AI/ML", isYourTeam: true },
-  { rank: 2, team: "Binary Beasts", score: 890, members: 3, change: 1, category: "Web3", isYourTeam: false },
-  { rank: 3, team: "Pixel Pioneers", score: 845, members: 4, change: -1, category: "HealthTech", isYourTeam: false },
-  { rank: 4, team: "Data Dragons", score: 780, members: 5, change: 2, category: "FinTech", isYourTeam: false },
-  { rank: 5, team: "API Avengers", score: 720, members: 4, change: 0, category: "DevTools", isYourTeam: false },
-  { rank: 6, team: "Cloud Chasers", score: 695, members: 3, change: -2, category: "Cloud", isYourTeam: false },
-  { rank: 7, team: "Neural Ninjas", score: 670, members: 4, change: 1, category: "AI/ML", isYourTeam: false },
-  { rank: 8, team: "Stack Overflow", score: 645, members: 5, change: 3, category: "Education", isYourTeam: false },
-  { rank: 9, team: "Debug Dynasty", score: 620, members: 4, change: -1, category: "DevTools", isYourTeam: false },
-  { rank: 10, team: "Frontend Force", score: 590, members: 3, change: 0, category: "Web", isYourTeam: false }
-]
+import { useAuth } from "@/hooks/use-auth"
+import { subscribe, COLLECTIONS, orderBy } from "@/lib/firestore"
 
 export default function StudentLeaderboardPage() {
+  const { user } = useAuth()
+  const [teams, setTeams] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+
+  useEffect(() => {
+    const unsub = subscribe(COLLECTIONS.TEAMS, setTeams, orderBy("score", "desc"))
+    return () => unsub()
+  }, [])
+
+  const leaderboardData = teams.map((t, i) => ({
+    rank: i + 1,
+    team: t.name ?? "Unnamed",
+    score: t.score ?? 0,
+    members: t.members?.length ?? 0,
+    change: t.rankChange ?? 0,
+    category: t.category ?? "General",
+    isYourTeam: t.members?.some((m: any) => m.uid === user?.uid) || t.leaderId === user?.uid,
+  }))
 
   const filteredTeams = leaderboardData.filter(team =>
     team.team.toLowerCase().includes(searchQuery.toLowerCase())

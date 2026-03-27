@@ -1,105 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Calendar, Plus, Clock, MapPin, Users, Edit2, Trash2, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-const scheduleData = [
-  {
-    id: 1,
-    title: "Opening Ceremony",
-    time: "09:00 AM",
-    endTime: "10:00 AM",
-    location: "Main Hall A",
-    description: "Welcome address and event kickoff",
-    attendees: 486,
-    status: "completed"
-  },
-  {
-    id: 2,
-    title: "Team Formation & Registration",
-    time: "10:00 AM",
-    endTime: "11:00 AM",
-    location: "Registration Desk",
-    description: "Teams finalize their registration and receive materials",
-    attendees: 486,
-    status: "completed"
-  },
-  {
-    id: 3,
-    title: "Hacking Begins",
-    time: "11:00 AM",
-    endTime: "12:00 PM",
-    location: "All Venues",
-    description: "Official start of the hackathon coding period",
-    attendees: 486,
-    status: "active"
-  },
-  {
-    id: 4,
-    title: "Lunch Break",
-    time: "12:30 PM",
-    endTime: "01:30 PM",
-    location: "Cafeteria",
-    description: "Lunch service for all participants",
-    attendees: 500,
-    status: "upcoming"
-  },
-  {
-    id: 5,
-    title: "Mentor Office Hours - Round 1",
-    time: "02:00 PM",
-    endTime: "04:00 PM",
-    location: "Meeting Rooms",
-    description: "First round of mentor consultations",
-    attendees: 200,
-    status: "upcoming"
-  },
-  {
-    id: 6,
-    title: "Workshop: API Integration",
-    time: "03:00 PM",
-    endTime: "04:00 PM",
-    location: "Room 201",
-    description: "Technical workshop on integrating sponsor APIs",
-    attendees: 80,
-    status: "upcoming"
-  },
-  {
-    id: 7,
-    title: "Progress Check-in",
-    time: "05:00 PM",
-    endTime: "06:00 PM",
-    location: "All Teams",
-    description: "Volunteers check team progress and offer support",
-    attendees: 124,
-    status: "upcoming"
-  },
-  {
-    id: 8,
-    title: "Dinner Service",
-    time: "07:00 PM",
-    endTime: "08:00 PM",
-    location: "Hall B",
-    description: "Dinner for all participants and staff",
-    attendees: 520,
-    status: "upcoming"
-  },
-  {
-    id: 9,
-    title: "Night Owl Coding Session",
-    time: "10:00 PM",
-    endTime: "02:00 AM",
-    location: "Labs & Halls",
-    description: "Extended coding hours with snack service",
-    attendees: 300,
-    status: "upcoming"
-  }
-]
+import { subscribe, remove, COLLECTIONS } from "@/lib/firestore"
+import { orderBy } from "firebase/firestore"
 
 export default function SchedulePage() {
+  const [scheduleData, setScheduleData] = useState<any[]>([])
   const [selectedDay, setSelectedDay] = useState("Day 1")
+
+  useEffect(() => {
+    const unsub = subscribe(COLLECTIONS.SCHEDULE, setScheduleData, orderBy("startTime", "asc"))
+    return () => unsub()
+  }, [])
+
+  const handleDelete = async (id: string) => {
+    await remove(COLLECTIONS.SCHEDULE, id)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -222,7 +141,7 @@ export default function SchedulePage() {
                       <div className="flex flex-wrap items-center gap-4 text-sm">
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <Clock className="w-4 h-4" />
-                          {event.time} - {event.endTime}
+                          {event.startTime ? new Date(event.startTime).toLocaleTimeString("en-US", {hour: "2-digit", minute: "2-digit"}) : event.time} - {event.endTime ? new Date(event.endTime).toLocaleTimeString("en-US", {hour: "2-digit", minute: "2-digit"}) : ""}
                         </div>
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <MapPin className="w-4 h-4" />
@@ -238,7 +157,7 @@ export default function SchedulePage() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(event.id)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>

@@ -1,49 +1,55 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MessageSquare, Send, Search, Users, Hash, Plus, Paperclip, Smile } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-
-const channels = [
-  { id: 1, name: "general", type: "channel", unread: 3, members: 486 },
-  { id: 2, name: "announcements", type: "channel", unread: 0, members: 486 },
-  { id: 3, name: "tech-support", type: "channel", unread: 5, members: 124 },
-  { id: 4, name: "volunteers", type: "channel", unread: 2, members: 24 },
-  { id: 5, name: "mentors", type: "channel", unread: 0, members: 15 },
-  { id: 6, name: "organizers", type: "channel", unread: 1, members: 8 }
-]
-
-const directMessages = [
-  { id: 1, name: "Sarah Chen", avatar: "SC", status: "online", unread: 2, lastMessage: "Got it, thanks!" },
-  { id: 2, name: "Mike Johnson", avatar: "MJ", status: "online", unread: 0, lastMessage: "Issue resolved" },
-  { id: 3, name: "Emily Davis", avatar: "ED", status: "away", unread: 0, lastMessage: "On my way" },
-  { id: 4, name: "Alex Kim", avatar: "AK", status: "offline", unread: 0, lastMessage: "See you tomorrow" }
-]
-
-const messages = [
-  { id: 1, sender: "Sarah Chen", avatar: "SC", message: "Hey team, the WiFi issue in Hall B has been resolved!", time: "10:32 AM", isOwn: false },
-  { id: 2, sender: "You", avatar: "AD", message: "Great work! Can you update the issue tracker?", time: "10:33 AM", isOwn: true },
-  { id: 3, sender: "Sarah Chen", avatar: "SC", message: "Already done! Also, we might need more power strips in Lab 1.", time: "10:34 AM", isOwn: false },
-  { id: 4, sender: "Mike Johnson", avatar: "MJ", message: "I have some spare ones in the storage room. Will bring them over.", time: "10:35 AM", isOwn: false },
-  { id: 5, sender: "You", avatar: "AD", message: "Perfect, thanks Mike! How are the mentor sessions going?", time: "10:36 AM", isOwn: true },
-  { id: 6, sender: "Emily Davis", avatar: "ED", message: "All good here! We have 3 mentors currently with teams. Queue is moving smoothly.", time: "10:38 AM", isOwn: false },
-  { id: 7, sender: "Alex Kim", avatar: "AK", message: "Registration desk is clear now. All teams are checked in!", time: "10:40 AM", isOwn: false },
-  { id: 8, sender: "You", avatar: "AD", message: "Excellent progress everyone! Lunch service starts in 2 hours. Make sure to take breaks.", time: "10:42 AM", isOwn: true }
-]
+import { subscribe, create, COLLECTIONS, formatTimestamp } from "@/lib/firestore"
+import { orderBy, serverTimestamp, where } from "firebase/firestore"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function CommunicationPage() {
-  const [selectedChannel, setSelectedChannel] = useState(channels[0])
+  const { user, userData } = useAuth()
+  const [channels, setChannels] = useState<any[]>([])
+  const [messages, setMessages] = useState<any[]>([])
+  const [selectedChannel, setSelectedChannel] = useState<any>(null)
   const [newMessage, setNewMessage] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (newMessage.trim()) {
-      // Handle sending message
-      setNewMessage("")
+  useEffect(() => {
+    const unsub = subscribe(COLLECTIONS.CHANNELS, setChannels)
+    return () => unsub()
+  }, [])
+
+  useEffect(() => {
+    if (!selectedChannel && channels.length > 0) {
+      setSelectedChannel(channels[0])
     }
+  }, [channels, selectedChannel])
+
+  useEffect(() => {
+    if (!selectedChannel?.id) return
+    const unsub = subscribe(
+      `${COLLECTIONS.CHANNELS}/${selectedChannel.id}/messages`,
+      setMessages,
+      orderBy("createdAt", "asc"),
+    )
+    return () => unsub()
+  }, [selectedChannel?.id])
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newMessage.trim() || !selectedChannel?.id) return
+    await create(`${COLLECTIONS.CHANNELS}/${selectedChannel.id}/messages`, {
+      sender: userData?.name || user?.displayName || "Admin",
+      avatar: (userData?.name || "A").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2),
+      message: newMessage,
+      isOwn: true,
+      uid: user?.uid,
+      createdAt: serverTimestamp(),
+    })
+    setNewMessage("")
   }
 
   return (
@@ -155,8 +161,8 @@ export default function CommunicationPage() {
                   <Hash className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-foreground">{selectedChannel.name}</h3>
-                  <p className="text-xs text-muted-foreground">{selectedChannel.members} members</p>
+                  <h3 className="font-semibold text-foreground">{selectedChannel?.name || "Select a channel"}</h3>
+                  <p className="text-xs text-muted-foreground">{selectedChannel?.members || 0} members</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -168,21 +174,23 @@ export default function CommunicationPage() {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((message) => (
+              {messages.map((message) => {
+                const isOwn = message.uid === user?.uid
+                return (
                 <div
                   key={message.id}
-                  className={`flex gap-3 ${message.isOwn ? "flex-row-reverse" : ""}`}
+                  className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""}`}
                 >
                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-medium text-primary">{message.avatar}</span>
+                    <span className="text-sm font-medium text-primary">{message.avatar || "?"}</span>
                   </div>
-                  <div className={`max-w-[70%] ${message.isOwn ? "text-right" : ""}`}>
-                    <div className={`flex items-center gap-2 mb-1 ${message.isOwn ? "flex-row-reverse" : ""}`}>
+                  <div className={`max-w-[70%] ${isOwn ? "text-right" : ""}`}>
+                    <div className={`flex items-center gap-2 mb-1 ${isOwn ? "flex-row-reverse" : ""}`}>
                       <span className="text-sm font-medium text-foreground">{message.sender}</span>
-                      <span className="text-xs text-muted-foreground">{message.time}</span>
+                      <span className="text-xs text-muted-foreground">{formatTimestamp(message.createdAt)}</span>
                     </div>
                     <div className={`inline-block p-3 rounded-2xl ${
-                      message.isOwn
+                      isOwn
                         ? "bg-primary text-primary-foreground rounded-tr-md"
                         : "bg-secondary/50 text-foreground rounded-tl-md"
                     }`}>
@@ -190,7 +198,8 @@ export default function CommunicationPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Message Input */}
@@ -200,7 +209,7 @@ export default function CommunicationPage() {
                   <Paperclip className="w-5 h-5" />
                 </Button>
                 <Input
-                  placeholder={`Message #${selectedChannel.name}...`}
+                  placeholder={`Message #${selectedChannel?.name || "channel"}...`}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   className="flex-1 bg-secondary/50 border-border/50 rounded-xl"

@@ -1,28 +1,72 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { User, Mail, Phone, Github, Linkedin, Globe, Camera, Save, MapPin, Briefcase, GraduationCap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/hooks/use-auth"
+import { update, COLLECTIONS } from "@/lib/firestore"
 
 export default function ProfilePage() {
+  const { user, userData } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [profile, setProfile] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@email.com",
-    phone: "+1 (555) 123-4567",
-    university: "Stanford University",
-    major: "Computer Science",
-    year: "Senior",
-    location: "San Francisco, CA",
-    github: "johndoe",
-    linkedin: "johndoe",
-    website: "johndoe.dev",
-    bio: "Passionate full-stack developer with expertise in AI/ML. Love building products that make a difference. Always excited to learn and collaborate on innovative projects.",
-    skills: ["React", "Node.js", "Python", "TensorFlow", "AWS", "Docker"]
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    university: "",
+    major: "",
+    year: "",
+    location: "",
+    github: "",
+    linkedin: "",
+    website: "",
+    bio: "",
+    skills: [] as string[]
   })
+
+  useEffect(() => {
+    if (userData) {
+      const [first = "", ...rest] = (userData.displayName ?? "").split(" ")
+      setProfile({
+        firstName: first,
+        lastName: rest.join(" "),
+        email: userData.email ?? user?.email ?? "",
+        phone: userData.phone ?? "",
+        university: userData.university ?? "",
+        major: userData.major ?? "",
+        year: userData.year ?? "",
+        location: userData.location ?? "",
+        github: userData.github ?? "",
+        linkedin: userData.linkedin ?? "",
+        website: userData.website ?? "",
+        bio: userData.bio ?? "",
+        skills: userData.skills ?? [],
+      })
+    }
+  }, [userData, user])
+
+  const handleSave = async () => {
+    if (!user) return
+    await update(COLLECTIONS.USERS, user.uid, {
+      displayName: `${profile.firstName} ${profile.lastName}`.trim(),
+      phone: profile.phone,
+      university: profile.university,
+      major: profile.major,
+      year: profile.year,
+      location: profile.location,
+      github: profile.github,
+      linkedin: profile.linkedin,
+      website: profile.website,
+      bio: profile.bio,
+      skills: profile.skills,
+    })
+    setIsEditing(false)
+  }
+
+  const initials = `${profile.firstName[0] ?? ""}${profile.lastName[0] ?? ""}`.toUpperCase() || "?"
 
   return (
     <div className="space-y-6">
@@ -47,7 +91,7 @@ export default function ProfilePage() {
           <CardContent className="p-6 text-center">
             <div className="relative inline-block mb-4">
               <div className="w-32 h-32 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center mx-auto">
-                <span className="text-4xl font-bold text-primary">JD</span>
+                <span className="text-4xl font-bold text-primary">{initials}</span>
               </div>
               {isEditing && (
                 <button className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors">
@@ -190,7 +234,7 @@ export default function ProfilePage() {
 
             {isEditing && (
               <div className="flex justify-end">
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground btn-glow">
+                <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 text-primary-foreground btn-glow">
                   <Save className="w-4 h-4 mr-2" />
                   Save Changes
                 </Button>
