@@ -1,7 +1,7 @@
 # ⚡ HackHub — Hackathon Management Platform
 
 > The all-in-one platform for organizing, managing, and running successful hackathons — built at **Techstasy 2.0**.
-
+# Contributed by Prarambh (okprarambh@gmail.com)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![NextAuth](https://img.shields.io/badge/NextAuth.js-JWT-green?style=flat-square)
